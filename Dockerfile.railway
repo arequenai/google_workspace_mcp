@@ -1,0 +1,30 @@
+# Railway-specific image. Differs from the upstream Dockerfile in one
+# way: it does NOT switch to a non-root user. Railway Volumes are
+# mounted as root with mode 755, so the app process must run as root
+# in order to create the OAuth-proxy directory inside the volume.
+#
+# This file is only used by Railway (railway.json points at it). All
+# other deployment paths (docker-compose, helm, Cloud Run, smithery)
+# continue to use the upstream Dockerfile, which keeps its USER app
+# hardening.
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir uv
+
+COPY . .
+
+RUN uv sync --frozen --no-dev --extra disk
+
+EXPOSE 8000
+
+ENV TOOL_TIER=""
+ENV TOOLS=""
+
+# Start command is provided by railway.json (so $PORT and the volume
+# directory bootstrap can be expressed there).

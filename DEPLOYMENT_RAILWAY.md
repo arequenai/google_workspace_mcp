@@ -70,9 +70,18 @@ in-flight OAuth state and registered DCR clients. Two options:
 
 ### Option A — Railway Volume + `disk` backend (recommended, simplest)
 
-The repo's `Dockerfile` already installs the `disk` extra
-(`uv sync --frozen --no-dev --extra disk`), so no Dockerfile edit is
-required.
+This deployment uses **`Dockerfile.railway`** (referenced from
+`railway.json`), which is the upstream `Dockerfile` minus the
+`USER app` directive. The reason: Railway Volumes are mounted as
+**root with mode 755**, so the running process must be root in order
+to create the OAuth-proxy directory inside the volume on first boot.
+The upstream `Dockerfile` (used by docker-compose, helm, Cloud Run,
+smithery, etc.) keeps its `USER app` hardening — only Railway runs
+as root, and only because of the volume-ownership constraint.
+
+The start command in `railway.json` defensively runs
+`mkdir -p "$WORKSPACE_MCP_OAUTH_PROXY_DISK_DIRECTORY"` before
+launching the server.
 
 1. In the Railway service: **Settings → Volumes → New Volume.** Mount
    path: `/data`. Size: 1 GB is plenty.
@@ -193,7 +202,8 @@ boot — see "Installing the valkey extra" at the end of this document.
 | `Error 400: redirect_uri_mismatch` from Google | The Web OAuth client doesn't list the Railway URL | Add `https://<service>.up.railway.app/oauth2callback` to the Web client's Authorized redirect URIs and wait ~1 min for propagation. |
 | `Error 403: access_denied` from Google | Consent screen still in Testing and the user isn't on the test-user list | Add the user under OAuth consent screen → Test users, or publish the app. |
 | `claude.ai` shows "Invalid redirect URI" after consent | `WORKSPACE_MCP_ALLOWED_CLIENT_REDIRECT_URIS` doesn't include Claude's callbacks | Set to `https://claude.ai/api/mcp/auth_callback,https://claude.com/api/mcp/auth_callback`. |
-| Server logs `Disk client_storage requested but disk dependencies are not installed` | Image was built without the `disk` extra | The upstream `Dockerfile` includes `--extra disk`. If you forked it, restore that flag. |
+| Server logs `Disk client_storage requested but disk dependencies are not installed` | Image was built without the `disk` extra | `Dockerfile.railway` (and the upstream `Dockerfile`) include `--extra disk`. If you forked, restore that flag. |
+| `Failed to initialize FastMCP GoogleProvider: [Errno 13] Permission denied: '/data/oauth-proxy'` | The image switched to `USER app` but the Railway Volume at `/data` is owned by root | Confirm `railway.json` sets `dockerfilePath: Dockerfile.railway` (which runs as root). The upstream `Dockerfile` has `USER app` and will hit this error on Railway. |
 | Tokens / DCR clients lost across redeploys | `WORKSPACE_MCP_OAUTH_PROXY_DISK_DIRECTORY` not pointing inside a Railway Volume mount | Mount a Volume at `/data` and set the directory under it. |
 | Random sign-out after a deploy | `FASTMCP_SERVER_AUTH_GOOGLE_JWT_SIGNING_KEY` was rotated, or was unset and `GOOGLE_OAUTH_CLIENT_SECRET` changed | Set a stable random value once and don't rotate. |
 | Health check fails immediately after deploy | App crashed on boot | Open the deploy logs; usually a missing required env var. |
@@ -205,10 +215,13 @@ boot — see "Installing the valkey extra" at the end of this document.
 
 ## 7. Reference: what `railway.json` configures
 
-- Builder: `DOCKERFILE` — Railway uses the repo's `Dockerfile` as-is.
-- Start command: `uv run main.py --transport streamable-http` — overrides
-  the Dockerfile `CMD` so Railway's `$PORT` is honoured automatically
-  (the app reads `PORT` at `main.py:379`).
+- Builder: `DOCKERFILE`, `dockerfilePath: Dockerfile.railway` — a
+  thin variant of the upstream `Dockerfile` that omits `USER app` so
+  the process can write to a root-owned Railway Volume.
+- Start command:
+  `mkdir -p "$WORKSPACE_MCP_OAUTH_PROXY_DISK_DIRECTORY" && exec uv run main.py --transport streamable-http`
+  — defensively creates the OAuth-proxy directory inside the volume,
+  then launches the server (the app reads `PORT` at `main.py:379`).
 - Health check: `GET /health`, 60 s timeout.
 - Restart policy: on failure, up to 5 retries.
 
