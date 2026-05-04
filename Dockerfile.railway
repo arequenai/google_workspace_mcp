@@ -31,5 +31,10 @@ EXPOSE 8000
 ENV TOOL_TIER=""
 ENV TOOLS=""
 
+# Flush stdout/stderr immediately so Railway's runtime logs show boot
+# progress and tracebacks without being held back in Python's buffer.
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONFAULTHANDLER=1
+
 # Start command is provided by railway.json (so $PORT and the volume
 # directory bootstrap can be expressed there).
