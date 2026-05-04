@@ -120,7 +120,7 @@ boot — see "Installing the valkey extra" at the end of this document.
 | --- | --- | --- |
 | `GOOGLE_OAUTH_CLIENT_ID` | from §2 | Google OAuth Web client ID. |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | from §2 | Google OAuth Web client secret. |
-| `WORKSPACE_EXTERNAL_URL` | `https://<service>.up.railway.app` | Public HTTPS URL Railway issues. The server uses this to build redirect URIs and OAuth metadata. **No trailing slash.** |
+| `WORKSPACE_EXTERNAL_URL` | `https://<service>.up.railway.app` | Public HTTPS URL Railway issues. The server uses this to build redirect URIs and OAuth metadata. **Must include the `https://` scheme** — Railway's dashboard displays the bare domain, which is a common footgun (`bin/start.sh` auto-prepends `https://` if missing and warns). **No trailing slash.** |
 | `MCP_ENABLE_OAUTH21` | `true` | Enables the OAuth 2.1 proxy required for `claude.ai`. |
 | `WORKSPACE_MCP_STATELESS_MODE` | `true` | Required: Railway's filesystem (outside the volume) is ephemeral, and `claude.ai` requires per-request bearer tokens. |
 | `WORKSPACE_MCP_OAUTH_PROXY_STORAGE_BACKEND` | `disk` | Persists DCR client registrations, OAuth transactions, and refresh-token metadata. With Option A above, this writes to your Railway Volume. |
@@ -204,6 +204,7 @@ boot — see "Installing the valkey extra" at the end of this document.
 | `claude.ai` shows "Invalid redirect URI" after consent | `WORKSPACE_MCP_ALLOWED_CLIENT_REDIRECT_URIS` doesn't include Claude's callbacks | Set to `https://claude.ai/api/mcp/auth_callback,https://claude.com/api/mcp/auth_callback`. |
 | Server logs `Disk client_storage requested but disk dependencies are not installed` | Image was built without the `disk` extra | `Dockerfile.railway` (and the upstream `Dockerfile`) include `--extra disk`. If you forked, restore that flag. |
 | `Failed to initialize FastMCP GoogleProvider: [Errno 13] Permission denied: '/data/oauth-proxy'` | The image switched to `USER app` but the Railway Volume at `/data` is owned by root | Confirm `railway.json` sets `dockerfilePath: Dockerfile.railway` (which runs as root). The upstream `Dockerfile` has `USER app` and will hit this error on Railway. |
+| `Failed to initialize FastMCP GoogleProvider: 1 validation error for function-wrap[wrap_val()] Input should be a valid URL ... type=url_parsing` | `WORKSPACE_EXTERNAL_URL` is set to a bare domain (e.g. `myservice.up.railway.app`) without an `https://` scheme | Set the value to `https://<service>.up.railway.app`. `bin/start.sh` will auto-prepend `https://` and log a warning starting with the commit that introduced this row, but fixing the env var is cleaner. |
 | Tokens / DCR clients lost across redeploys | `WORKSPACE_MCP_OAUTH_PROXY_DISK_DIRECTORY` not pointing inside a Railway Volume mount | Mount a Volume at `/data` and set the directory under it. |
 | Random sign-out after a deploy | `FASTMCP_SERVER_AUTH_GOOGLE_JWT_SIGNING_KEY` was rotated, or was unset and `GOOGLE_OAUTH_CLIENT_SECRET` changed | Set a stable random value once and don't rotate. |
 | Health check fails immediately after deploy | App crashed on boot | Open the deploy logs; usually a missing required env var. |
