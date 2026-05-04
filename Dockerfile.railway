@@ -21,6 +21,11 @@ COPY . .
 
 RUN uv sync --frozen --no-dev --extra disk
 
+# Make the Railway entrypoint executable. Permissions are not preserved
+# reliably across all platforms during git checkout, so set the bit
+# inside the image instead of relying on the source tree.
+RUN chmod +x /app/bin/start.sh
+
 EXPOSE 8000
 
 ENV TOOL_TIER=""

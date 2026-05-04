@@ -5,7 +5,7 @@
     "dockerfilePath": "Dockerfile.railway"
   },
   "deploy": {
-    "startCommand": "mkdir -p \"${WORKSPACE_MCP_OAUTH_PROXY_DISK_DIRECTORY:-/data/oauth-proxy}\" && exec uv run main.py --transport streamable-http",
+    "startCommand": "/app/bin/start.sh",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 60,
     "restartPolicyType": "ON_FAILURE",

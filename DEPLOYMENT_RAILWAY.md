@@ -218,10 +218,15 @@ boot — see "Installing the valkey extra" at the end of this document.
 - Builder: `DOCKERFILE`, `dockerfilePath: Dockerfile.railway` — a
   thin variant of the upstream `Dockerfile` that omits `USER app` so
   the process can write to a root-owned Railway Volume.
-- Start command:
-  `mkdir -p "$WORKSPACE_MCP_OAUTH_PROXY_DISK_DIRECTORY" && exec uv run main.py --transport streamable-http`
-  — defensively creates the OAuth-proxy directory inside the volume,
-  then launches the server (the app reads `PORT` at `main.py:379`).
+- Start command: `/app/bin/start.sh` — a tiny shell script in the
+  repo (`bin/start.sh`). It runs `mkdir -p` on the OAuth-proxy
+  directory (idempotent, fine for first boot of a fresh Volume) and
+  then `exec uv run main.py --transport streamable-http`. Kept as a
+  script so the `startCommand` in `railway.json` is a single
+  executable path — Railway has been observed to exec the
+  `startCommand` directly without wrapping it in `sh -c`, which
+  silently breaks any shell features like `${VAR:-default}`, `&&`,
+  or `exec`.
 - Health check: `GET /health`, 60 s timeout.
 - Restart policy: on failure, up to 5 retries.
 
