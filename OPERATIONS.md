@@ -30,9 +30,9 @@ in this document operates the upstream codebase as-is.
 | MCP endpoint | `https://googleworkspacemcp-production-abd2.up.railway.app/mcp` |
 | OAuth callback (Google must allow this) | `https://googleworkspacemcp-production-abd2.up.railway.app/oauth2callback` |
 | Health endpoint | `https://googleworkspacemcp-production-abd2.up.railway.app/health` |
-| GCP project | `<fill in: e.g. workspace-mcp-prod>` |
-| Bound Google account (project owner / OAuth consent contact) | `<fill in: you@example.com>` |
-| Railway project / service | `<fill in: project name → service name>` |
+| GCP project | `claude-workspace-mcp` |
+| Bound Google account (project owner / OAuth consent contact) | `<my gmail>` |
+| Railway project / service | `<name>` → `google-workspace-mcp` |
 | Volume mount | `/data` (single replica only) |
 
 ---
